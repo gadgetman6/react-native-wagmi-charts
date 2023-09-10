@@ -50,6 +50,8 @@ const linearScalePositionAndIndex = ({
 
   const domainArray = xDomain ?? [0, timestamps.length];
 
+  console.log (domainArray)
+
   // Same scale as in /src/charts/line/utils/getPath.ts
   const scaleX = scaleLinear().domain(domainArray).range([0, width]);
 
