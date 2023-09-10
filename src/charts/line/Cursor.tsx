@@ -100,7 +100,6 @@ export function LineChartCursor({
   
     // Same scale as in /src/charts/line/utils/getPath.ts
     const scaleX = scaleLinear().domain(domainArray).range([0, width]);
-    // console.log ("got here")
   
     // Calculate a scaled timestamp for the current touch position
     const xRelative = scaleX.invert(xPosition);
@@ -120,8 +119,6 @@ export function LineChartCursor({
     // Update values
     currentIndex.value = closestIndex;
     // currentX.value = p0;
-  
-    console.log ("func", currentX.value, currentIndex.value)
     
   };
 
@@ -157,13 +154,11 @@ export function LineChartCursor({
             path: parsedPath,
             xDomain,
           });
-          console.log (currentX.value, currentIndex.value)
           currentX.value = boundedX;
           // update the currentX and currentIndex values
         } else if (!snapToPoint) {
           currentX.value = boundedX;
           currentIndex.value = boundedIndex;
-          console.log (currentX.value, currentIndex.value)
         }
       }
     },
