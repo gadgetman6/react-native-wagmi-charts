@@ -21,62 +21,57 @@ export type LineChartCursorProps = LongPressGestureHandlerProps & {
   children: React.ReactNode;
   type: 'line' | 'crosshair';
   snapToPoint?: boolean;
+  timestamps: number[];
 };
 
 export const CursorContext = React.createContext({ type: '' });
 
-LineChartCursor.displayName = 'LineChartCursor';
+function findClosestIndex(timestamps, xRelative) {
+  let left = 0;
+  let right = timestamps.length - 1;
 
-const linearScalePositionAndIndex = ({
-  timestamps,
-  width,
-  xToUpdate,
-  currentIndex,
-  xPosition,
-  path,
-  xDomain,
-}: {
-  timestamps: number[];
-  width: number;
-  xToUpdate: Animated.SharedValue<number>;
-  currentIndex: Animated.SharedValue<number>;
-  xPosition: number;
-  path: Path | undefined;
-  xDomain: [number, number] | undefined;
-}) => {
-  if (!path) {
-    return;
+  // Handle edge cases where xRelative is outside the timestamps range
+  if (xRelative <= timestamps[left]) {
+    return left;
+  }
+  if (xRelative >= timestamps[right]) {
+    return right;
   }
 
-  const domainArray = xDomain ?? [0, timestamps.length];
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
 
-  console.log (domainArray)
+    if (timestamps[mid] === xRelative) {
+      return mid; // Exact match found
+    }
 
-  // Same scale as in /src/charts/line/utils/getPath.ts
-  const scaleX = scaleLinear().domain(domainArray).range([0, width]);
+    if (timestamps[mid] < xRelative) {
+      left = mid + 1;
+    } else {
+      right = mid - 1;
+    }
+  }
 
-  // Calculate a scaled timestamp for the current touch position
-  const xRelative = scaleX.invert(xPosition);
+  // At this point, left points to the index after the closest lower value
+  // and right points to the index before the closest higher value
+  // We need to determine which one is closer to xRelative
+  const leftDiff = Math.abs(timestamps[left] - xRelative);
+  const rightDiff = Math.abs(timestamps[right] - xRelative);
 
-  const closestIndex = bisectCenter(timestamps, xRelative);
-  const pathDataDelta = Math.abs(path.curves.length - timestamps.length); // sometimes there is a difference between data length and number of path curves.
-  const closestPathCurve = Math.max(
-    Math.min(bisectCenter(timestamps, xRelative), path.curves.length + 1) -
-      pathDataDelta,
-    0
-  );
+  if (leftDiff <= rightDiff) {
+    return left;
+  } else {
+    return right;
+  }
+}
 
-  const p0 = (closestIndex > 0 ? path.curves[closestPathCurve].to : path.move)
-    .x;
-  // Update values
-  currentIndex.value = closestIndex;
-  xToUpdate.value = p0;
-};
+LineChartCursor.displayName = 'LineChartCursor';
 
 export function LineChartCursor({
   children,
   snapToPoint,
   type,
+  timestamps,
   ...props
 }: LineChartCursorProps) {
   const { pathWidth: width, parsedPath } = React.useContext(
@@ -84,13 +79,61 @@ export function LineChartCursor({
   );
   const { currentX, currentIndex, isActive, data, xDomain } = useLineChart();
 
+  const linearScalePositionAndIndex = ({
+    timestamps,
+    width,
+    xPosition,
+    path,
+    xDomain,
+  }: {
+    timestamps: number[];
+    width: number;
+    xPosition: number;
+    path: Path | undefined;
+    xDomain: [number, number] | undefined;
+  }) => {
+    if (!path) {
+      return;
+    }
+  
+    const domainArray = xDomain ?? [0, timestamps.length];
+  
+    // Same scale as in /src/charts/line/utils/getPath.ts
+    const scaleX = scaleLinear().domain(domainArray).range([0, width]);
+    // console.log ("got here")
+  
+    // Calculate a scaled timestamp for the current touch position
+    const xRelative = scaleX.invert(xPosition);
+  
+  
+    // const closestIndex = bisectCenter(timestamps, xRelative);
+    const closestIndex = findClosestIndex(timestamps, xRelative);
+  
+    const pathDataDelta = Math.abs(path.curves.length - timestamps.length); // sometimes there is a difference between data length and number of path curves.
+    const closestPathCurve = Math.max(
+      Math.min(closestIndex, path.curves.length + 1) -
+        pathDataDelta,
+      0
+    );
+    const p0 = (closestIndex > 0 ? path.curves[closestPathCurve].to : path.move)
+      .x;
+    // Update values
+    currentIndex.value = closestIndex;
+    // currentX.value = p0;
+  
+    console.log ("func", currentX.value, currentIndex.value)
+    
+  };
+
   const onGestureEvent = useAnimatedGestureHandler<
     GestureEvent<LongPressGestureHandlerEventPayload>
   >({
+    
     onActive: ({ x }) => {
       if (parsedPath) {
         const boundedX = Math.max(0, x <= width ? x : width);
         isActive.value = true;
+
         const xValues = data.map(({ timestamp }, i) =>
           xDomain ? timestamp : i
         );
@@ -104,20 +147,23 @@ export function LineChartCursor({
           Math.round(boundedX / width / (1 / (data.length - 1)))
         );
 
+
         if (snapToPoint) {
           // We have to run this on the JS thread unfortunately as the scaleLinear functions won't work on UI thread
           runOnJS(linearScalePositionAndIndex)({
             timestamps: xValues,
             width,
-            xToUpdate: currentX,
-            currentIndex,
             xPosition: boundedX,
             path: parsedPath,
             xDomain,
           });
+          console.log (currentX.value, currentIndex.value)
+          currentX.value = boundedX;
+          // update the currentX and currentIndex values
         } else if (!snapToPoint) {
           currentX.value = boundedX;
           currentIndex.value = boundedIndex;
+          console.log (currentX.value, currentIndex.value)
         }
       }
     },
