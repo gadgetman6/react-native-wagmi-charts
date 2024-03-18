@@ -16,6 +16,7 @@ import { StyleSheet } from 'react-native';
 import { bisectCenter } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import { useLineChart } from './useLineChart';
+import type { Path } from 'react-native-redash';
 
 export type LineChartCursorProps = LongPressGestureHandlerProps & {
   children: React.ReactNode;
@@ -91,35 +92,6 @@ export function LineChartCursor({
   }, [width, xDomain, xValues.length]);
 
   const linearScalePositionAndIndex = ({
-    xPosition,
-  }: {
-    xPosition: number;
-  }) => {
-    if (!parsedPath) {
-      return;
-    }
-
-    // Calculate a scaled timestamp for the current touch position
-    const xRelative = scaleX.invert(xPosition);
-
-    const closestIndex = bisectCenter(xValues, xRelative);
-    const pathDataDelta = Math.abs(parsedPath.curves.length - xValues.length); // sometimes there is a difference between data length and number of path curves.
-    const closestPathCurve = Math.max(
-      Math.min(closestIndex, parsedPath.curves.length + 1) - pathDataDelta,
-      0
-    );
-
-    const newXPosition = (
-      closestIndex > 0
-        ? parsedPath.curves[closestPathCurve].to
-        : parsedPath.move
-    ).x;
-    // Update values
-    currentIndex.value = closestIndex;
-    currentX.value = newXPosition;
-  };
-
-  const linearScalePositionAndIndex = ({
     timestamps,
     width,
     xPosition,
@@ -190,11 +162,11 @@ export function LineChartCursor({
           runOnJS(linearScalePositionAndIndex)({
             timestamps: xValues,
             width,
-            xPosition: boundedX,
+            xPosition: xPosition,
             path: parsedPath,
             xDomain,
           });
-          currentX.value = boundedX;
+          currentX.value = xPosition;
           // update the currentX and currentIndex values
         } else if (!snapToPoint) {
           currentX.value = xPosition;
