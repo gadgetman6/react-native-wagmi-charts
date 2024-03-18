@@ -13,7 +13,6 @@ import {
 
 import { LineChartDimensionsContext } from './Chart';
 import { StyleSheet } from 'react-native';
-import { bisectCenter } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import { useLineChart } from './useLineChart';
 import type { Path } from 'react-native-redash';
@@ -28,7 +27,7 @@ export type LineChartCursorProps = LongPressGestureHandlerProps & {
 
 export const CursorContext = React.createContext({ type: '' });
 
-function findClosestIndex(timestamps, xRelative) {
+function findClosestIndex(timestamps: any, xRelative: any) {
   let left = 0;
   let right = timestamps.length - 1;
 
@@ -81,7 +80,7 @@ export function LineChartCursor({
   );
   const { currentX, currentIndex, isActive, data, xDomain } = useLineChart();
   const xValues = React.useMemo(
-    () => data.map(({ timestamp }, i) => (xDomain ? timestamp : i)),
+    () => data.map(({ timestamp }: { timestamp: any }, i: number) => (xDomain ? timestamp : i)),
     [data, xDomain]
   );
 
@@ -93,10 +92,8 @@ export function LineChartCursor({
 
   const linearScalePositionAndIndex = ({
     timestamps,
-    width,
     xPosition,
     path,
-    xDomain,
   }: {
     timestamps: number[];
     width: number;
@@ -108,11 +105,6 @@ export function LineChartCursor({
       return;
     }
   
-    const domainArray = xDomain ?? [0, timestamps.length];
-  
-    // Same scale as in /src/charts/line/utils/getPath.ts
-    const scaleX = scaleLinear().domain(domainArray).range([0, width]);
-  
     // Calculate a scaled timestamp for the current touch position
     const xRelative = scaleX.invert(xPosition);
   
@@ -120,14 +112,15 @@ export function LineChartCursor({
     // const closestIndex = bisectCenter(timestamps, xRelative);
     const closestIndex = findClosestIndex(timestamps, xRelative);
   
-    const pathDataDelta = Math.abs(path.curves.length - timestamps.length); // sometimes there is a difference between data length and number of path curves.
-    const closestPathCurve = Math.max(
-      Math.min(closestIndex, path.curves.length + 1) -
-        pathDataDelta,
-      0
-    );
-    const p0 = (closestIndex > 0 ? path.curves[closestPathCurve].to : path.move)
-      .x;
+    // const pathDataDelta = Math.abs(path.curves.length - timestamps.length); // sometimes there is a difference between data length and number of path curves.
+    // const closestPathCurve = Math.max(
+    //   Math.min(closestIndex, path.curves.length + 1) -
+    //     pathDataDelta,
+    //   0
+    // );
+    // const p0 = (closestIndex > 0 ? path.curves[closestPathCurve].to : path.move)
+    //   .x;
+    
     // Update values
     currentIndex.value = closestIndex;
     // currentX.value = p0;
@@ -138,12 +131,12 @@ export function LineChartCursor({
     GestureEvent<LongPressGestureHandlerEventPayload>
   >({
     
-    onActive: ({ x }) => {
+    onActive: ({ x }: {x: any}) => {
       if (parsedPath) {
         const xPosition = Math.max(0, x <= width ? x : width);
         isActive.value = true;
 
-        const xValues = data.map(({ timestamp }, i) =>
+        const xValues = data.map(({ timestamp }: {timestamp: any}, i: number) =>
           xDomain ? timestamp : i
         );
 
